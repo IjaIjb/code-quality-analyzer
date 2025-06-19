@@ -8,9 +8,9 @@
 
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
-[![Good First Issues](https://img.shields.io/github/issues/yourusername/react-code-quality-analyzer/good%20first%20issue)](https://github.com/yourusername/react-code-quality-analyzer/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+[![Good First Issues](https://img.shields.io/github/issues/IjaIjb/code-quality-analyzer/good%20first%20issue)](https://github.com/IjaIjb/code-quality-analyzer/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 
-[Live Demo](#) • [Contributing](CONTRIBUTING.md) • [Issues](https://github.com/yourusername/react-code-quality-analyzer/issues)
+[Live Demo](#) • [Contributing](CONTRIBUTING.md) • [Issues](https://github.com/IjaIjb/code-quality-analyzer/issues)
 
 </div>
 
@@ -26,12 +26,12 @@
 ## 🚀 Quick Start
 
 ### Online Demo
-Try it now: [Live Demo](https://your-demo-url.vercel.app)
+Try it now: [Live Demo](https://code-analyzers.netlify.app)
 
 ### Local Development
 ```bash
-git clone https://github.com/yourusername/react-code-quality-analyzer.git
-cd react-code-quality-analyzer
+git clone https://github.com/IjaIjb/code-quality-analyzer.git
+cd code-quality-analyzer
 npm install
 npm run dev
 ```
@@ -108,28 +108,28 @@ We're building the most comprehensive React code analysis tool! **Help us advanc
 
 | Feature | Difficulty | Impact | Status |
 |---------|------------|--------|--------|
-| [CLI Tool](https://github.com/yourusername/react-code-quality-analyzer/issues/1) | Beginner | High | Open |
-| [VS Code Extension](https://github.com/yourusername/react-code-quality-analyzer/issues/2) | Intermediate | High | Open |
-| [Accessibility Scanner](https://github.com/yourusername/react-code-quality-analyzer/issues/5) | Intermediate | High | Open |
-| [Git Hook Integration](https://github.com/yourusername/react-code-quality-analyzer/issues/11) | Beginner | Medium | Open |
+| [CLI Tool](https://github.com/IjaIjb/code-quality-analyzer/issues/1) | Beginner | High | Open |
+| [VS Code Extension](https://github.com/IjaIjb/code-quality-analyzer/issues/2) | Intermediate | High | Open |
+| [Accessibility Scanner](https://github.com/IjaIjb/code-quality-analyzer/issues/5) | Intermediate | High | Open |
+| [Git Hook Integration](https://github.com/IjaIjb/code-quality-analyzer/issues/11) | Beginner | Medium | Open |
 
 ### 🔧 Advanced Features
 
 | Feature | Difficulty | Impact | Status |
 |---------|------------|--------|--------|
-| [Custom Rules Engine](https://github.com/yourusername/react-code-quality-analyzer/issues/3) | Advanced | High | Open |
-| [Performance Profiler](https://github.com/yourusername/react-code-quality-analyzer/issues/4) | Advanced | High | Open |
-| [AI-Powered Analysis](https://github.com/yourusername/react-code-quality-analyzer/issues/10) | Expert | Medium | Open |
-| [React Native Support](https://github.com/yourusername/react-code-quality-analyzer/issues/8) | Intermediate | Medium | Open |
+| [Custom Rules Engine](https://github.com/IjaIjb/code-quality-analyzer/issues/3) | Advanced | High | Open |
+| [Performance Profiler](https://github.com/IjaIjb/code-quality-analyzer/issues/4) | Advanced | High | Open |
+| [AI-Powered Analysis](https://github.com/IjaIjb/code-quality-analyzer/issues/10) | Expert | Medium | Open |
+| [React Native Support](https://github.com/IjaIjb/code-quality-analyzer/issues/8) | Intermediate | Medium | Open |
 
 ### 📊 More Opportunities
 
 | Feature | Difficulty | Impact | Status |
 |---------|------------|--------|--------|
-| [Code Metrics Dashboard](https://github.com/yourusername/react-code-quality-analyzer/issues/6) | Intermediate | Medium | Open |
-| [ESLint Integration](https://github.com/yourusername/react-code-quality-analyzer/issues/7) | Intermediate | Medium | Open |
-| [Automated Fixes](https://github.com/yourusername/react-code-quality-analyzer/issues/9) | Advanced | High | Open |
-| [Documentation Generator](https://github.com/yourusername/react-code-quality-analyzer/issues/12) | Beginner | Low | Open |
+| [Code Metrics Dashboard](https://github.com/IjaIjb/code-quality-analyzer/issues/6) | Intermediate | Medium | Open |
+| [ESLint Integration](https://github.com/IjaIjb/code-quality-analyzer/issues/7) | Intermediate | Medium | Open |
+| [Automated Fixes](https://github.com/IjaIjb/code-quality-analyzer/issues/9) | Advanced | High | Open |
+| [Documentation Generator](https://github.com/IjaIjb/code-quality-analyzer/issues/12) | Beginner | Low | Open |
 
 ### 🎖️ Recognition for Contributors
 
@@ -140,7 +140,7 @@ We're building the most comprehensive React code analysis tool! **Help us advanc
 
 ### 💡 Getting Started
 
-1. **Choose an Issue** - Pick from our [good first issues](https://github.com/yourusername/react-code-quality-analyzer/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+1. **Choose an Issue** - Pick from our [good first issues](https://github.com/IjaIjb/code-quality-analyzer/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 2. **Comment to Claim** - Let us know you're working on it
 3. **Fork & Code** - Create your feature branch
 4. **Submit PR** - We'll review and merge
@@ -188,6 +188,6 @@ If this project helped you, please star ⭐ the repository!
 
 **Join us in building the future of React development tools!**
 
-[Get Started](https://github.com/yourusername/react-code-quality-analyzer/issues) • [Contribute](CONTRIBUTING.md) • [Discuss](https://github.com/yourusername/react-code-quality-analyzer/discussions)
+[Get Started](https://github.com/IjaIjb/code-quality-analyzer/issues) • [Contribute](CONTRIBUTING.md) • [Discuss](https://github.com/IjaIjb/code-quality-analyzer/discussions)
 
 </div>
