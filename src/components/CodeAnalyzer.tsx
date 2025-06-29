@@ -377,7 +377,7 @@ export default UserProfile;`);
             setAnalyzedFiles(prev => [...prev, ...newAnalyzedFiles]);
             setSelectedFileIndex(analyzedFiles.length); // Select first new file
         } catch (error) {
-            console.error('Error processing files:', error);
+            // Handle file processing errors
             alert('Error processing files. Please try again.');
         } finally {
             setIsAnalyzing(false);
@@ -402,7 +402,7 @@ export default UserProfile;`);
         if (e.dataTransfer.files) {
             handleFileUpload(e.dataTransfer.files);
         }
-    }, []);
+    }, [analyzedFiles.length]);
 
     // File input handler
     const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
