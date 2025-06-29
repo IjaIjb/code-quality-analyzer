@@ -350,7 +350,7 @@ export default UserProfile;`);
     };
 
     // Handle file upload
-    const handleFileUpload = async (files: FileList) => {
+    const handleFileUpload = useCallback(async (files: FileList) => {
         const validFiles = Array.from(files).filter(isValidFile);
         
         if (validFiles.length === 0) {
@@ -382,7 +382,7 @@ export default UserProfile;`);
         } finally {
             setIsAnalyzing(false);
         }
-    };
+    }, [analyzedFiles.length]);
 
     // Drag and drop handlers
     const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -402,7 +402,7 @@ export default UserProfile;`);
         if (e.dataTransfer.files) {
             handleFileUpload(e.dataTransfer.files);
         }
-    }, [analyzedFiles.length]);
+    }, [handleFileUpload]);
 
     // File input handler
     const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
