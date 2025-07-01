@@ -1,7 +1,294 @@
-import React, { useState, useCallback } from 'react';
-import { AlertCircle, CheckCircle, XCircle, Code, FileText, TrendingUp } from 'lucide-react';
-import { analyzer } from '../utils/analyzer';
-import { AnalysisResult, CodeIssue } from '../types';
+import React, { useState, useCallback, useRef } from 'react';
+import { AlertCircle, CheckCircle, XCircle, Code, FileText, TrendingUp, Upload, File, X, Plus } from 'lucide-react';
+
+// Types
+interface CodeIssue {
+    id: string;
+    type: 'error' | 'warning' | 'info';
+    category: string;
+    message: string;
+    line: number;
+    column: number;
+    rule: string;
+    suggestion?: string;
+}
+
+interface AnalysisResult {
+    issues: CodeIssue[];
+    metrics: CodeMetrics;
+    summary: IssueSummary;
+}
+
+interface CodeMetrics {
+    complexity: number;
+    maintainability: number;
+    testability: number;
+    performance: number;
+}
+
+interface IssueSummary {
+    errors: number;
+    warnings: number;
+    info: number;
+    total: number;
+}
+
+interface AnalyzedFile {
+    name: string;
+    content: string;
+    result: AnalysisResult;
+}
+
+// Analyzer implementation
+class ReactCodeAnalyzer {
+    public analyzeCode(code: string): AnalysisResult {
+        const lines = code.split('\n');
+        const issues: CodeIssue[] = [];
+
+        issues.push(...this.checkBasicReactRules(code, lines));
+        issues.push(...this.checkTypeScriptRules(code, lines));
+        issues.push(...this.checkAccessibilityRules(code, lines));
+        issues.push(...this.checkPerformanceRules(code, lines));
+        issues.push(...this.checkCodeQualityRules(code, lines));
+
+        const metrics = this.calculateMetrics(code, issues);
+        const summary = this.generateSummary(issues);
+
+        return { issues, metrics, summary };
+    }
+
+    private checkBasicReactRules(code: string, lines: string[]): CodeIssue[] {
+        const issues: CodeIssue[] = [];
+
+        lines.forEach((line, index) => {
+            const lineNum = index + 1;
+            const trimmedLine = line.trim();
+
+            if (trimmedLine.includes('({ ') && !code.includes('PropTypes') && !code.includes('interface')) {
+                issues.push({
+                    id: `prop-types-${lineNum}`,
+                    type: 'warning',
+                    category: 'Type Safety',
+                    message: 'Missing PropTypes validation or TypeScript interface',
+                    line: lineNum,
+                    column: line.indexOf('({ '),
+                    rule: 'react/prop-types',
+                    suggestion: 'Add PropTypes validation or use TypeScript interfaces'
+                });
+            }
+
+            if (trimmedLine.includes('useEffect') && !lines[index + 1]?.includes('[]') && !lines[index + 2]?.includes('[]')) {
+                const effectContent = lines.slice(index, index + 5).join('\n');
+                if (effectContent.includes('fetch') || effectContent.includes('api')) {
+                    issues.push({
+                        id: `missing-deps-${lineNum}`,
+                        type: 'error',
+                        category: 'React Hooks',
+                        message: 'Potential missing dependency in useEffect',
+                        line: lineNum,
+                        column: 0,
+                        rule: 'react-hooks/exhaustive-deps',
+                        suggestion: 'Review and add missing dependencies to dependency array'
+                    });
+                }
+            }
+
+            if (trimmedLine.includes('.map(') && !trimmedLine.includes('key=')) {
+                issues.push({
+                    id: `missing-key-${lineNum}`,
+                    type: 'error',
+                    category: 'React',
+                    message: 'Missing key prop in list rendering',
+                    line: lineNum,
+                    column: line.indexOf('.map('),
+                    rule: 'react/jsx-key',
+                    suggestion: 'Add unique key prop to each rendered element'
+                });
+            }
+        });
+
+        return issues;
+    }
+
+    private checkTypeScriptRules(code: string, lines: string[]): CodeIssue[] {
+        const issues: CodeIssue[] = [];
+
+        lines.forEach((line, index) => {
+            const lineNum = index + 1;
+
+            if (line.includes(': any') || line.includes('<any>')) {
+                issues.push({
+                    id: `any-type-${lineNum}`,
+                    type: 'warning',
+                    category: 'TypeScript',
+                    message: 'Avoid using any type',
+                    line: lineNum,
+                    column: line.indexOf('any'),
+                    rule: '@typescript-eslint/no-explicit-any',
+                    suggestion: 'Define proper types instead of using any'
+                });
+            }
+
+            if (line.includes('console.log')) {
+                issues.push({
+                    id: `console-log-${lineNum}`,
+                    type: 'info',
+                    category: 'Code Quality',
+                    message: 'Remove console.log statement',
+                    line: lineNum,
+                    column: line.indexOf('console.log'),
+                    rule: 'no-console',
+                    suggestion: 'Use proper error handling instead of console.log'
+                });
+            }
+        });
+
+        return issues;
+    }
+
+    private checkAccessibilityRules(code: string, lines: string[]): CodeIssue[] {
+        const issues: CodeIssue[] = [];
+
+        lines.forEach((line, index) => {
+            const lineNum = index + 1;
+
+            if (line.includes('<img') && !line.includes('alt=')) {
+                issues.push({
+                    id: `missing-alt-${lineNum}`,
+                    type: 'error',
+                    category: 'Accessibility',
+                    message: 'Image missing alt attribute',
+                    line: lineNum,
+                    column: line.indexOf('<img'),
+                    rule: 'jsx-a11y/alt-text',
+                    suggestion: 'Add descriptive alt attribute to image'
+                });
+            }
+
+            if (line.includes('<button') && !line.includes('aria-') && !line.includes('type=')) {
+                issues.push({
+                    id: `a11y-button-${lineNum}`,
+                    type: 'warning',
+                    category: 'Accessibility',
+                    message: 'Button missing accessibility attributes',
+                    line: lineNum,
+                    column: line.indexOf('<button'),
+                    rule: 'jsx-a11y/button-has-type',
+                    suggestion: 'Add aria-label or proper button type'
+                });
+            }
+        });
+
+        return issues;
+    }
+
+    private checkPerformanceRules(code: string, lines: string[]): CodeIssue[] {
+        const issues: CodeIssue[] = [];
+
+        lines.forEach((line, index) => {
+            const lineNum = index + 1;
+
+            if (line.includes('style={{') || line.includes('onClick={() =>')) {
+                issues.push({
+                    id: `inline-creation-${lineNum}`,
+                    type: 'warning',
+                    category: 'Performance',
+                    message: 'Inline object/function creation in render',
+                    line: lineNum,
+                    column: line.indexOf(line.includes('style={{') ? 'style={{' : 'onClick={() =>'),
+                    rule: 'react/jsx-no-bind',
+                    suggestion: 'Move object/function creation outside render or use useCallback/useMemo'
+                });
+            }
+
+            if (line.includes("'/") && line.includes("' + ")) {
+                issues.push({
+                    id: `string-concat-${lineNum}`,
+                    type: 'warning',
+                    category: 'Best Practices',
+                    message: 'Use template literals instead of string concatenation',
+                    line: lineNum,
+                    column: line.indexOf("' + "),
+                    rule: 'prefer-template',
+                    suggestion: 'Use template literals with backticks instead of string concatenation'
+                });
+            }
+        });
+
+        return issues;
+    }
+
+    private checkCodeQualityRules(code: string, lines: string[]): CodeIssue[] {
+        const issues: CodeIssue[] = [];
+
+        lines.forEach((line, index) => {
+            const lineNum = index + 1;
+            const trimmedLine = line.trim();
+
+            if (trimmedLine.startsWith('import') && trimmedLine.includes('React')) {
+                const importMatch = trimmedLine.match(/import\s+{([^}]+)}/);
+                if (importMatch) {
+                    const imports = importMatch[1].split(',').map(s => s.trim());
+                    imports.forEach(importName => {
+                        if (importName !== 'React' && !code.includes(importName.split(' as ')[0])) {
+                            issues.push({
+                                id: `unused-import-${lineNum}-${importName}`,
+                                type: 'warning',
+                                category: 'Code Quality',
+                                message: `Unused import: ${importName}`,
+                                line: lineNum,
+                                column: line.indexOf(importName),
+                                rule: 'no-unused-vars',
+                                suggestion: `Remove unused import: ${importName}`
+                            });
+                        }
+                    });
+                }
+            }
+
+            if (trimmedLine === '{}' || trimmedLine === '{ }') {
+                issues.push({
+                    id: `empty-block-${lineNum}`,
+                    type: 'info',
+                    category: 'Code Quality',
+                    message: 'Empty block detected',
+                    line: lineNum,
+                    column: line.indexOf('{'),
+                    rule: 'no-empty',
+                    suggestion: 'Remove empty block or add implementation'
+                });
+            }
+        });
+
+        return issues;
+    }
+
+    private calculateMetrics(code: string, issues: CodeIssue[]): CodeMetrics {
+        const complexityIndicators = code.match(/(if|for|while|switch|catch|\?\s*:)/g) || [];
+        const complexity = Math.min(10, Math.max(1, 10 - Math.floor(complexityIndicators.length / 2)));
+
+        const maintainability = Math.min(10, Math.max(1, 10 - Math.floor(issues.length / 3)));
+
+        const hasExports = code.includes('export');
+        const hasPureFunctions = code.includes('const ') && code.includes('=>');
+        const testability = hasExports && hasPureFunctions ? 8 : 6;
+
+        const performanceIssues = issues.filter(issue => issue.category === 'Performance').length;
+        const performance = Math.min(10, Math.max(1, 8 - performanceIssues));
+
+        return { complexity, maintainability, testability, performance };
+    }
+
+    private generateSummary(issues: CodeIssue[]): IssueSummary {
+        const errors = issues.filter(issue => issue.type === 'error').length;
+        const warnings = issues.filter(issue => issue.type === 'warning').length;
+        const info = issues.filter(issue => issue.type === 'info').length;
+
+        return { errors, warnings, info, total: issues.length };
+    }
+}
+
+const analyzer = new ReactCodeAnalyzer();
 
 const CodeAnalyzer: React.FC = () => {
     const [code, setCode] = useState(`import React, { useState, useEffect } from 'react';
@@ -39,31 +326,136 @@ const UserProfile = ({ userId }) => {
 
 export default UserProfile;`);
 
-    const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [analyzedFiles, setAnalyzedFiles] = useState<AnalyzedFile[]>([]);
+    const [selectedFileIndex, setSelectedFileIndex] = useState<number>(-1);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const analyzeCode = useCallback(async () => {
+    // File validation
+    const isValidFile = (file: File): boolean => {
+        const validExtensions = ['.tsx', '.ts', '.jsx', '.js'];
+        const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+        return validExtensions.includes(extension);
+    };
+
+    // Read file content
+    const readFileContent = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    };
+
+    // Handle file upload
+    const handleFileUpload = useCallback(async (files: FileList) => {
+        const validFiles = Array.from(files).filter(isValidFile);
+        
+        if (validFiles.length === 0) {
+            alert('Please upload valid React/TypeScript files (.tsx, .ts, .jsx, .js)');
+            return;
+        }
+
         setIsAnalyzing(true);
 
-        // Simulate analysis delay for better UX
+        try {
+            const newAnalyzedFiles: AnalyzedFile[] = [];
+            
+            for (const file of validFiles) {
+                const content = await readFileContent(file);
+                const result = analyzer.analyzeCode(content);
+                
+                newAnalyzedFiles.push({
+                    name: file.name,
+                    content,
+                    result
+                });
+            }
+
+            setAnalyzedFiles(prev => [...prev, ...newAnalyzedFiles]);
+            setSelectedFileIndex(analyzedFiles.length); // Select first new file
+        } catch (error) {
+            // Handle file processing errors
+            alert('Error processing files. Please try again.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    }, [analyzedFiles.length]);
+
+    // Drag and drop handlers
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        
+        if (e.dataTransfer.files) {
+            handleFileUpload(e.dataTransfer.files);
+        }
+    }, [handleFileUpload]);
+
+    // File input handler
+    const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            handleFileUpload(e.target.files);
+        }
+    };
+
+    // Analyze current code
+    const analyzeCode = useCallback(async () => {
+        setIsAnalyzing(true);
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         const result = analyzer.analyzeCode(code);
-        setAnalysisResult(result);
+        
+        // Add/update manual input file
+        const manualFile: AnalyzedFile = {
+            name: 'Manual Input',
+            content: code,
+            result
+        };
+
+        setAnalyzedFiles(prev => {
+            const filtered = prev.filter(f => f.name !== 'Manual Input');
+            return [manualFile, ...filtered];
+        });
+        
+        setSelectedFileIndex(0);
         setIsAnalyzing(false);
     }, [code]);
 
+    // Remove file
+    const removeFile = (index: number) => {
+        setAnalyzedFiles(prev => prev.filter((_, i) => i !== index));
+        if (selectedFileIndex === index) {
+            setSelectedFileIndex(analyzedFiles.length > 1 ? 0 : -1);
+        } else if (selectedFileIndex > index) {
+            setSelectedFileIndex(selectedFileIndex - 1);
+        }
+    };
+
+    // Get current analysis result
+    const currentResult = selectedFileIndex >= 0 ? analyzedFiles[selectedFileIndex]?.result : null;
+    const currentFileName = selectedFileIndex >= 0 ? analyzedFiles[selectedFileIndex]?.name : null;
+
+    // Helper functions
     const getIssueIcon = (type: string) => {
         const iconStyle = { width: '16px', height: '16px' };
         switch (type) {
-            case 'error':
-                return <XCircle style={{ ...iconStyle, color: '#dc2626' }} />;
-            case 'warning':
-                return <AlertCircle style={{ ...iconStyle, color: '#d97706' }} />;
-            case 'info':
-                return <CheckCircle style={{ ...iconStyle, color: '#2563eb' }} />;
-            default:
-                return <AlertCircle style={iconStyle} />;
+            case 'error': return <XCircle style={{ ...iconStyle, color: '#dc2626' }} />;
+            case 'warning': return <AlertCircle style={{ ...iconStyle, color: '#d97706' }} />;
+            case 'info': return <CheckCircle style={{ ...iconStyle, color: '#2563eb' }} />;
+            default: return <AlertCircle style={iconStyle} />;
         }
     };
 
@@ -85,235 +477,124 @@ export default UserProfile;`);
         return '#ef4444';
     };
 
-    // Styles
-    const containerStyle: React.CSSProperties = {
-        minHeight: '100vh',
-        backgroundColor: '#f8fafc',
-        padding: '20px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-    };
-
-    const maxWidthStyle: React.CSSProperties = {
-        maxWidth: '1200px',
-        margin: '0 auto'
-    };
-
-    const headerStyle: React.CSSProperties = {
-        marginBottom: '40px',
-        textAlign: 'center'
-    };
-
-    const titleContainerStyle: React.CSSProperties = {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '12px',
-        marginBottom: '16px'
-    };
-
-    const titleStyle: React.CSSProperties = {
-        fontSize: '32px',
-        fontWeight: 'bold',
-        color: '#1e293b',
-        margin: 0
-    };
-
-    const subtitleStyle: React.CSSProperties = {
-        color: '#64748b',
-        fontSize: '18px',
-        margin: 0,
-        maxWidth: '800px',
-        marginLeft: 'auto',
-        marginRight: 'auto',
-        lineHeight: '1.6'
-    };
-
-    const gridStyle: React.CSSProperties = {
-        display: 'grid',
-        gridTemplateColumns: window.innerWidth >= 1024 ? '1fr 1fr' : '1fr',
-        gap: '32px',
-        alignItems: 'flex-start'
-    };
-
-    const cardStyle: React.CSSProperties = {
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        border: '1px solid #e2e8f0',
-        padding: '24px'
-    };
-
-    const sectionHeaderStyle: React.CSSProperties = {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px'
-    };
-
-    const sectionTitleStyle: React.CSSProperties = {
-        fontSize: '20px',
-        fontWeight: '600',
-        color: '#1e293b',
-        margin: 0,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px'
-    };
-
-    const buttonStyle: React.CSSProperties = {
-        padding: '10px 20px',
-        backgroundColor: '#3b82f6',
-        color: 'white',
-        borderRadius: '8px',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '14px',
-        fontWeight: '500',
-        transition: 'all 0.2s ease',
-        boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
-    };
-
-    const disabledButtonStyle: React.CSSProperties = {
-        ...buttonStyle,
-        backgroundColor: '#94a3b8',
-        cursor: 'not-allowed',
-        boxShadow: 'none'
-    };
-
-    const textareaStyle: React.CSSProperties = {
-        width: '100%',
-        height: '400px',
-        padding: '16px',
-        border: '2px solid #e2e8f0',
-        borderRadius: '8px',
-        fontFamily: '"Fira Code", "Monaco", "Consolas", monospace',
-        fontSize: '14px',
-        resize: 'none',
-        outline: 'none',
-        transition: 'border-color 0.2s ease',
-        backgroundColor: '#fafafa',
-        lineHeight: '1.5'
-    };
-
-    const tipStyle: React.CSSProperties = {
-        marginTop: '12px',
-        padding: '12px 16px',
-        backgroundColor: '#eff6ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: '8px',
-        fontSize: '14px',
-        color: '#1e40af'
-    };
-
-    const metricsGridStyle: React.CSSProperties = {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '16px'
-    };
-
-    const metricCardStyle: React.CSSProperties = {
-        padding: '16px',
-        borderRadius: '8px',
-        position: 'relative',
-        overflow: 'hidden'
-    };
-
-    const summaryGridStyle: React.CSSProperties = {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '16px'
-    };
-
-    const summaryCardStyle: React.CSSProperties = {
-        textAlign: 'center',
-        padding: '20px 16px',
-        borderRadius: '8px'
-    };
-
-    const issueContainerStyle: React.CSSProperties = {
-        maxHeight: '400px',
-        overflowY: 'auto',
-        padding: '4px'
-    };
-
-    const issueStyle: React.CSSProperties = {
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        padding: '16px',
-        marginBottom: '12px',
-        backgroundColor: '#fafafa',
-        transition: 'all 0.2s ease'
-    };
-
-    const suggestionStyle: React.CSSProperties = {
-        backgroundColor: '#eff6ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: '6px',
-        padding: '10px',
-        marginTop: '8px'
-    };
-
-    const emptyStateStyle: React.CSSProperties = {
-        textAlign: 'center',
-        padding: '60px 20px',
-        color: '#64748b'
-    };
-
-    const featuresGridStyle: React.CSSProperties = {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '20px'
-    };
-
-    const featureCardStyle: React.CSSProperties = {
-        padding: '20px',
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        backgroundColor: 'white',
-        transition: 'all 0.2s ease',
-        cursor: 'pointer'
-    };
-
     return (
-        <div style={containerStyle}>
-            <div style={maxWidthStyle}>
+        <div className="min-h-screen bg-slate-50 p-5 font-sans">
+            <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div style={headerStyle}>
-                    <div style={titleContainerStyle}>
-                        <Code style={{ width: '40px', height: '40px', color: '#3b82f6' }} />
-                        <h1 style={titleStyle}>React Code Quality Analyzer</h1>
+                <div className="mb-10 text-center">
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                        <Code className="w-10 h-10 text-blue-500" />
+                        <h1 className="text-3xl font-bold text-slate-800">React Code Quality Analyzer</h1>
                     </div>
-                    <p style={subtitleStyle}>
+                    <p className="text-slate-600 text-lg max-w-4xl mx-auto leading-relaxed">
                         Analyze your React components for quality issues, performance problems, and best practice violations.
-                        Get instant feedback and intelligent suggestions for improvement.
+                        Upload files or paste code to get instant feedback and intelligent suggestions.
                     </p>
                 </div>
 
-                <div style={gridStyle}>
-                    {/* Code Input Section */}
+                <div className="grid lg:grid-cols-2 gap-8 items-start">
+                    {/* Input Section */}
                     <div>
-                        <div style={cardStyle}>
-                            <div style={sectionHeaderStyle}>
-                                <h2 style={sectionTitleStyle}>
-                                    <FileText style={{ width: '20px', height: '20px' }} />
-                                    React Component Code
+                        {/* File Upload Area */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                            <div className="flex justify-between items-center mb-5">
+                                <h2 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+                                    <Upload className="w-5 h-5" />
+                                    Upload Files
+                                </h2>
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Browse Files
+                                </button>
+                            </div>
+
+                            {/* Drag & Drop Area */}
+                            <div
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                                    isDragOver 
+                                        ? 'border-blue-400 bg-blue-50' 
+                                        : 'border-slate-300 bg-slate-50'
+                                }`}
+                            >
+                                <Upload className={`w-12 h-12 mx-auto mb-4 ${isDragOver ? 'text-blue-500' : 'text-slate-400'}`} />
+                                <p className="text-slate-600 mb-2">
+                                    Drag & drop your React files here
+                                </p>
+                                <p className="text-sm text-slate-500">
+                                    Supports .tsx, .ts, .jsx, .js files
+                                </p>
+                            </div>
+
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".tsx,.ts,.jsx,.js"
+                                multiple
+                                onChange={handleFileInputChange}
+                                className="hidden"
+                            />
+
+                            {/* File List */}
+                            {analyzedFiles.length > 0 && (
+                                <div className="mt-4">
+                                    <h3 className="text-sm font-medium text-slate-700 mb-2">Analyzed Files:</h3>
+                                    <div className="space-y-2">
+                                        {analyzedFiles.map((file, index) => (
+                                            <div
+                                                key={index}
+                                                className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer ${
+                                                    selectedFileIndex === index
+                                                        ? 'bg-blue-50 border-blue-200'
+                                                        : 'bg-white border-slate-200 hover:bg-slate-50'
+                                                }`}
+                                                onClick={() => setSelectedFileIndex(index)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <File className="w-4 h-4 text-slate-500" />
+                                                    <span className="text-sm font-medium text-slate-700">{file.name}</span>
+                                                    <span className="text-xs text-slate-500">
+                                                        {file.result.summary.total} issues
+                                                    </span>
+                                                </div>
+                                                {file.name !== 'Manual Input' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            removeFile(index);
+                                                        }}
+                                                        className="text-slate-400 hover:text-red-500 transition-colors"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Manual Code Input */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <div className="flex justify-between items-center mb-5">
+                                <h2 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+                                    <FileText className="w-5 h-5" />
+                                    Manual Code Input
                                 </h2>
                                 <button
                                     onClick={analyzeCode}
                                     disabled={isAnalyzing || !code.trim()}
-                                    style={isAnalyzing || !code.trim() ? disabledButtonStyle : buttonStyle}
-                                    onMouseEnter={(e) => {
-                                        if (!isAnalyzing && code.trim()) {
-                                            e.currentTarget.style.backgroundColor = '#2563eb';
-                                            e.currentTarget.style.transform = 'translateY(-1px)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isAnalyzing && code.trim()) {
-                                            e.currentTarget.style.backgroundColor = '#3b82f6';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                        }
-                                    }}
+                                    className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        isAnalyzing || !code.trim()
+                                            ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                                            : 'bg-blue-500 text-white hover:bg-blue-600 hover:-translate-y-0.5 shadow-lg shadow-blue-500/30'
+                                    }`}
                                 >
                                     {isAnalyzing ? '🔍 Analyzing...' : '🚀 Analyze Code'}
                                 </button>
@@ -322,48 +603,52 @@ export default UserProfile;`);
                             <textarea
                                 value={code}
                                 onChange={(e) => setCode(e.target.value)}
-                                style={textareaStyle}
+                                className="w-full h-96 p-4 border-2 border-slate-200 rounded-lg font-mono text-sm resize-none outline-none transition-colors bg-slate-50 leading-relaxed focus:border-blue-400"
                                 placeholder="Paste your React component code here..."
-                                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                                onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                             />
 
-                            <div style={tipStyle}>
+                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
                                 💡 <strong>Tip:</strong> Paste your React/TypeScript component code above and click "Analyze Code" to get instant feedback!
                             </div>
                         </div>
                     </div>
 
-                    {/* Analysis Results Section */}
+                    {/* Results Section */}
                     <div>
-                        {analysisResult && (
+                        {currentResult && currentFileName && (
                             <>
+                                {/* File Header */}
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                                    <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                                        <File className="w-5 h-5" />
+                                        Analysis Results: {currentFileName}
+                                    </h3>
+                                </div>
+
                                 {/* Metrics Dashboard */}
-                                <div style={{ ...cardStyle, marginBottom: '24px' }}>
-                                    <h3 style={{ ...sectionTitleStyle, marginBottom: '20px' }}>
-                                        <TrendingUp style={{ width: '20px', height: '20px' }} />
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                                    <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2 mb-5">
+                                        <TrendingUp className="w-5 h-5" />
                                         Code Quality Metrics
                                     </h3>
 
-                                    <div style={metricsGridStyle}>
-                                        {Object.entries(analysisResult.metrics).map(([key, value]) => (
-                                            <div key={key} style={{ ...metricCardStyle, ...getMetricBg(value) }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151', textTransform: 'capitalize' }}>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {Object.entries(currentResult.metrics).map(([key, value]) => (
+                                            <div key={key} className={`p-4 rounded-lg ${getMetricBg(value).backgroundColor}`} style={getMetricBg(value)}>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-sm font-medium text-slate-700 capitalize">
                                                         {key}
                                                     </span>
-                                                    <span style={{ fontSize: '18px', fontWeight: 'bold', ...getMetricColor(value) }}>
+                                                    <span className="text-lg font-bold" style={getMetricColor(value)}>
                                                         {value}/10
                                                     </span>
                                                 </div>
-                                                <div style={{ backgroundColor: '#e5e7eb', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                                                <div className="bg-slate-200 rounded h-1.5 overflow-hidden">
                                                     <div
+                                                        className="h-full rounded transition-all duration-700"
                                                         style={{
-                                                            height: '100%',
                                                             backgroundColor: getProgressBarColor(value),
-                                                            width: `${value * 10}%`,
-                                                            transition: 'width 0.8s ease-in-out',
-                                                            borderRadius: '4px'
+                                                            width: `${value * 10}%`
                                                         }}
                                                     />
                                                 </div>
@@ -373,84 +658,61 @@ export default UserProfile;`);
                                 </div>
 
                                 {/* Issues Summary */}
-                                <div style={{ ...cardStyle, marginBottom: '24px' }}>
-                                    <h3 style={{ ...sectionTitleStyle, marginBottom: '20px' }}>📊 Issues Summary</h3>
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                                    <h3 className="text-lg font-semibold text-slate-800 mb-5">📊 Issues Summary</h3>
 
-                                    <div style={summaryGridStyle}>
-                                        <div style={{ ...summaryCardStyle, backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
-                                            <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#dc2626', marginBottom: '4px' }}>
-                                                {analysisResult.summary.errors}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="text-center p-5 bg-red-50 border border-red-200 rounded-lg">
+                                            <div className="text-2xl font-bold text-red-600 mb-1">
+                                                {currentResult.summary.errors}
                                             </div>
-                                            <div style={{ fontSize: '14px', color: '#dc2626', fontWeight: '500' }}>Errors</div>
+                                            <div className="text-sm text-red-600 font-medium">Errors</div>
                                         </div>
-                                        <div style={{ ...summaryCardStyle, backgroundColor: '#fffbeb', border: '1px solid #fde68a' }}>
-                                            <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#d97706', marginBottom: '4px' }}>
-                                                {analysisResult.summary.warnings}
+                                        <div className="text-center p-5 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                            <div className="text-2xl font-bold text-yellow-600 mb-1">
+                                                {currentResult.summary.warnings}
                                             </div>
-                                            <div style={{ fontSize: '14px', color: '#d97706', fontWeight: '500' }}>Warnings</div>
+                                            <div className="text-sm text-yellow-600 font-medium">Warnings</div>
                                         </div>
-                                        <div style={{ ...summaryCardStyle, backgroundColor: '#eff6ff', border: '1px solid #bfdbfe' }}>
-                                            <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#2563eb', marginBottom: '4px' }}>
-                                                {analysisResult.summary.info}
+                                        <div className="text-center p-5 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <div className="text-2xl font-bold text-blue-600 mb-1">
+                                                {currentResult.summary.info}
                                             </div>
-                                            <div style={{ fontSize: '14px', color: '#2563eb', fontWeight: '500' }}>Info</div>
+                                            <div className="text-sm text-blue-600 font-medium">Info</div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Detailed Issues */}
-                                <div style={cardStyle}>
-                                    <h3 style={{ ...sectionTitleStyle, marginBottom: '20px' }}>🔍 Detailed Issues</h3>
+                                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                                    <h3 className="text-lg font-semibold text-slate-800 mb-5">🔍 Detailed Issues</h3>
 
-                                    <div style={issueContainerStyle}>
-                                        {analysisResult.issues.map((issue: CodeIssue) => (
+                                    <div className="max-h-96 overflow-y-auto p-1">
+                                        {currentResult.issues.map((issue: CodeIssue) => (
                                             <div
                                                 key={issue.id}
-                                                style={issueStyle}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.backgroundColor = '#f1f5f9';
-                                                    e.currentTarget.style.borderColor = '#cbd5e1';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.backgroundColor = '#fafafa';
-                                                    e.currentTarget.style.borderColor = '#e2e8f0';
-                                                }}
+                                                className="border border-slate-200 rounded-lg p-4 mb-3 bg-slate-50 hover:bg-slate-100 transition-colors"
                                             >
-                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                                <div className="flex items-start gap-3">
                                                     {getIssueIcon(issue.type)}
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                                            <span style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                            <span className="text-sm font-semibold text-slate-800">
                                                                 {issue.category}
                                                             </span>
-                                                            <span style={{
-                                                                fontSize: '12px',
-                                                                color: '#64748b',
-                                                                backgroundColor: '#f1f5f9',
-                                                                padding: '2px 6px',
-                                                                borderRadius: '4px'
-                                                            }}>
+                                                            <span className="text-xs text-slate-500 bg-slate-200 px-2 py-0.5 rounded">
                                                                 Line {issue.line}
                                                             </span>
                                                         </div>
-                                                        <p style={{ fontSize: '14px', color: '#374151', margin: '6px 0', lineHeight: '1.5' }}>
+                                                        <p className="text-sm text-slate-700 mb-1.5 leading-relaxed">
                                                             {issue.message}
                                                         </p>
-                                                        <p style={{
-                                                            fontSize: '12px',
-                                                            color: '#64748b',
-                                                            margin: '4px 0',
-                                                            fontFamily: 'monospace',
-                                                            backgroundColor: '#f8fafc',
-                                                            padding: '2px 4px',
-                                                            borderRadius: '3px',
-                                                            display: 'inline-block'
-                                                        }}>
+                                                        <p className="text-xs text-slate-500 font-mono bg-slate-100 px-2 py-0.5 rounded inline-block mb-2">
                                                             Rule: {issue.rule}
                                                         </p>
                                                         {issue.suggestion && (
-                                                            <div style={suggestionStyle}>
-                                                                <p style={{ fontSize: '12px', color: '#1e40af', margin: 0, lineHeight: '1.4' }}>
+                                                            <div className="bg-blue-50 border border-blue-200 rounded p-2.5">
+                                                                <p className="text-xs text-blue-800 leading-relaxed">
                                                                     <strong>💡 Suggestion:</strong> {issue.suggestion}
                                                                 </p>
                                                             </div>
@@ -460,13 +722,13 @@ export default UserProfile;`);
                                             </div>
                                         ))}
 
-                                        {analysisResult.issues.length === 0 && (
-                                            <div style={emptyStateStyle}>
-                                                <CheckCircle style={{ width: '64px', height: '64px', margin: '0 auto 16px', color: '#10b981' }} />
-                                                <p style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0', color: '#1e293b' }}>
+                                        {currentResult.issues.length === 0 && (
+                                            <div className="text-center py-15">
+                                                <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-500" />
+                                                <p className="text-xl font-semibold mb-2 text-slate-800">
                                                     🎉 Excellent! No issues found.
                                                 </p>
-                                                <p style={{ fontSize: '16px', margin: 0 }}>
+                                                <p className="text-slate-600">
                                                     Your code follows React best practices!
                                                 </p>
                                             </div>
@@ -476,14 +738,14 @@ export default UserProfile;`);
                             </>
                         )}
 
-                        {!analysisResult && (
-                            <div style={{ ...cardStyle, ...emptyStateStyle }}>
-                                <Code style={{ width: '80px', height: '80px', margin: '0 auto 20px', color: '#94a3b8' }} />
-                                <p style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 8px 0', color: '#1e293b' }}>
+                        {!currentResult && (
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 text-center py-15">
+                                <Code className="w-20 h-20 mx-auto mb-5 text-slate-400" />
+                                <p className="text-xl font-semibold mb-2 text-slate-800">
                                     Ready to analyze your React code?
                                 </p>
-                                <p style={{ fontSize: '16px', margin: 0 }}>
-                                    Paste your component code and click "Analyze Code" to get started
+                                <p className="text-slate-600">
+                                    Upload files or paste your component code to get started
                                 </p>
                             </div>
                         )}
@@ -491,12 +753,12 @@ export default UserProfile;`);
                 </div>
 
                 {/* Features Section */}
-                <div style={{ ...cardStyle, marginTop: '48px' }}>
-                    <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1e293b', marginBottom: '24px', textAlign: 'center' }}>
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mt-12">
+                    <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">
                         🔬 What We Analyze
                     </h2>
 
-                    <div style={featuresGridStyle}>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {[
                             {
                                 title: '⚛️ React Hooks',
@@ -525,24 +787,12 @@ export default UserProfile;`);
                         ].map((feature, index) => (
                             <div
                                 key={index}
-                                style={featureCardStyle}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#f8fafc';
-                                    e.currentTarget.style.borderColor = '#cbd5e1';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 8px 25px -8px rgba(0, 0, 0, 0.15)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'white';
-                                    e.currentTarget.style.borderColor = '#e2e8f0';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
+                                className="p-5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 hover:border-slate-300 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-pointer"
                             >
-                                <h3 style={{ fontWeight: '600', color: '#1e293b', marginBottom: '8px', fontSize: '16px' }}>
+                                <h3 className="font-semibold text-slate-800 mb-2 text-base">
                                     {feature.title}
                                 </h3>
-                                <p style={{ fontSize: '14px', color: '#64748b', margin: 0, lineHeight: '1.5' }}>
+                                <p className="text-sm text-slate-600 leading-relaxed">
                                     {feature.description}
                                 </p>
                             </div>
