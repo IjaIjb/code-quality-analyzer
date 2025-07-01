@@ -269,7 +269,7 @@ class SessionManager {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(sessions));
     } catch (error) {
-      console.warn("Failed to save sessions to localStorage");
+    //   console.warn("Failed to save sessions to localStorage");
     }
   }
 
@@ -278,7 +278,7 @@ class SessionManager {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
-      console.warn("Failed to load sessions from localStorage");
+    //   console.warn("Failed to load sessions from localStorage");
       return [];
     }
   }
@@ -630,7 +630,7 @@ export default UserProfile;`);
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const sessionInputRef = useRef<any>(null);
+  const sessionInputRef = useRef<HTMLInputElement>(null);
 
   // Load sessions on component mount
   useEffect(() => {
