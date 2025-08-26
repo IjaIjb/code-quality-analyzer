@@ -52,3 +52,11 @@ export interface AnalyzedFile {
     content: string;
     result: AnalysisResult;
 }
+
+// Session management types
+export interface AnalysisSession {
+    id: string;
+    name: string;
+    timestamp: string;
+    files: AnalyzedFile[];
+}
