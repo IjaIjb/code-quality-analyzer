@@ -32,8 +32,8 @@ Try it now: [Live Demo](https://code-analyzers.netlify.app)
 ```bash
 git clone https://github.com/IjaIjb/code-quality-analyzer.git
 cd code-quality-analyzer
-npm install
-npm run dev
+yarn install
+yarn start 
 ```
 
 ## 📋 What It Detects
