@@ -60,3 +60,20 @@ export interface AnalysisSession {
     timestamp: string;
     files: AnalyzedFile[];
 }
+
+export interface IssueFilters {
+    severity: Set<'error' | 'warning' | 'info'>;
+    categories: Set<string>;
+    searchTerm: string;
+}
+
+export interface FilterStats {
+    totalIssues: number;
+    filteredIssues: number;
+    bySeverity: {
+        error: number;
+        warning: number;
+        info: number;
+    };
+    byCategory: Map<string, number>;
+}
