@@ -5,7 +5,8 @@ import {
     CheckCircle,
     XCircle,
     AlertCircle,
-    Code
+    Code,
+    Filter
 } from 'lucide-react';
 import { AnalysisResult, CodeIssue, IssueFilters } from '../types';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
