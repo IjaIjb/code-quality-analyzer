@@ -16,6 +16,7 @@
 
 ## ✨ Features
 
+
 - 🔍 **Real-time Analysis** - Instant feedback as you type
 - ⚡ **React-Specific Rules** - Hooks, state management, and JSX optimization
 - 🛡️ **Security Detection** - XSS and vulnerability scanning
