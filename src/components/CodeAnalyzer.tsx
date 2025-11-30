@@ -5,6 +5,7 @@ import CodeInputSection from './CodeInputSection';
 import AnalysisResultsSection from './AnalysisResultsSection';
 import ExportSessionManager from './ExportSessionManager';
 import { EnhancedSyntaxAnalyzer } from './EnhancedSyntaxAnalyzer';
+import FileComparisonView from './FileComparisonView';
 import {
   CodeIssue,
   AnalysisResult,
@@ -42,10 +43,22 @@ class ExportManager {
   }
 
   static generateGlobalSummary(files: AnalyzedFile[]) {
-    const totalIssues = files.reduce((sum, file) => sum + file.result.summary.total, 0);
-    const totalErrors = files.reduce((sum, file) => sum + file.result.summary.errors, 0);
-    const totalWarnings = files.reduce((sum, file) => sum + file.result.summary.warnings, 0);
-    const totalInfo = files.reduce((sum, file) => sum + file.result.summary.info, 0);
+    const totalIssues = files.reduce(
+      (sum, file) => sum + file.result.summary.total,
+      0,
+    );
+    const totalErrors = files.reduce(
+      (sum, file) => sum + file.result.summary.errors,
+      0,
+    );
+    const totalWarnings = files.reduce(
+      (sum, file) => sum + file.result.summary.warnings,
+      0,
+    );
+    const totalInfo = files.reduce(
+      (sum, file) => sum + file.result.summary.info,
+      0,
+    );
 
     const avgMetrics = files.reduce(
       (acc, file) => {
@@ -55,7 +68,7 @@ class ExportManager {
         acc.performance += file.result.metrics.performance;
         return acc;
       },
-      { complexity: 0, maintainability: 0, testability: 0, performance: 0 }
+      { complexity: 0, maintainability: 0, testability: 0, performance: 0 },
     );
 
     const fileCount = files.length;
@@ -69,7 +82,9 @@ class ExportManager {
         fileCount > 0
           ? {
               complexity: (avgMetrics.complexity / fileCount).toFixed(1),
-              maintainability: (avgMetrics.maintainability / fileCount).toFixed(1),
+              maintainability: (avgMetrics.maintainability / fileCount).toFixed(
+                1,
+              ),
               testability: (avgMetrics.testability / fileCount).toFixed(1),
               performance: (avgMetrics.performance / fileCount).toFixed(1),
             }
@@ -125,7 +140,12 @@ Quality Metrics:
       if (file.result.issues.length > 0) {
         report += `Issues Found:\n`;
         file.result.issues.forEach((issue, issueIndex) => {
-          const icon = issue.type === 'error' ? '❌' : issue.type === 'warning' ? '⚠️' : 'ℹ️';
+          const icon =
+            issue.type === 'error'
+              ? '❌'
+              : issue.type === 'warning'
+                ? '⚠️'
+                : 'ℹ️';
           report += `  ${issueIndex + 1}. ${icon} [${issue.category}] Line ${issue.line}
      ${issue.message}
      Rule: ${issue.rule}
@@ -168,7 +188,11 @@ RECOMMENDATIONS
       .catch(() => false);
   }
 
-  static downloadFile(content: string, filename: string, mimeType: string = 'text/plain') {
+  static downloadFile(
+    content: string,
+    filename: string,
+    mimeType: string = 'text/plain',
+  ) {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -246,7 +270,10 @@ class ReactCodeAnalyzer {
 
     // Combine metrics from syntax analysis and React analysis
     const reactMetrics = this.calculateReactMetrics(code, issues);
-    const combinedMetrics = this.combineMetrics(syntaxAnalysis.metrics, reactMetrics);
+    const combinedMetrics = this.combineMetrics(
+      syntaxAnalysis.metrics,
+      reactMetrics,
+    );
     const summary = this.generateSummary(issues);
 
     return { issues, metrics: combinedMetrics, summary };
@@ -259,7 +286,11 @@ class ReactCodeAnalyzer {
       const lineNum = index + 1;
       const trimmedLine = line.trim();
 
-      if (trimmedLine.includes('({ ') && !code.includes('PropTypes') && !code.includes('interface')) {
+      if (
+        trimmedLine.includes('({ ') &&
+        !code.includes('PropTypes') &&
+        !code.includes('interface')
+      ) {
         issues.push({
           id: `prop-types-${lineNum}`,
           type: 'warning',
@@ -287,7 +318,8 @@ class ReactCodeAnalyzer {
             line: lineNum,
             column: 0,
             rule: 'react-hooks/exhaustive-deps',
-            suggestion: 'Review and add missing dependencies to dependency array',
+            suggestion:
+              'Review and add missing dependencies to dependency array',
           });
         }
       }
@@ -364,7 +396,11 @@ class ReactCodeAnalyzer {
         });
       }
 
-      if (line.includes('<button') && !line.includes('aria-') && !line.includes('type=')) {
+      if (
+        line.includes('<button') &&
+        !line.includes('aria-') &&
+        !line.includes('type=')
+      ) {
         issues.push({
           id: `a11y-button-${lineNum}`,
           type: 'warning',
@@ -394,9 +430,12 @@ class ReactCodeAnalyzer {
           category: 'Performance',
           message: 'Inline object/function creation in render',
           line: lineNum,
-          column: line.indexOf(line.includes('style={{') ? 'style={{' : 'onClick={() =>'),
+          column: line.indexOf(
+            line.includes('style={{') ? 'style={{' : 'onClick={() =>',
+          ),
           rule: 'react/jsx-no-bind',
-          suggestion: 'Move object/function creation outside render or use useCallback/useMemo',
+          suggestion:
+            'Move object/function creation outside render or use useCallback/useMemo',
         });
       }
 
@@ -409,7 +448,8 @@ class ReactCodeAnalyzer {
           line: lineNum,
           column: line.indexOf("' + "),
           rule: 'prefer-template',
-          suggestion: 'Use template literals with backticks instead of string concatenation',
+          suggestion:
+            'Use template literals with backticks instead of string concatenation',
         });
       }
     });
@@ -429,7 +469,10 @@ class ReactCodeAnalyzer {
         if (importMatch) {
           const imports = importMatch[1].split(',').map((s) => s.trim());
           imports.forEach((importName) => {
-            if (importName !== 'React' && !code.includes(importName.split(' as ')[0])) {
+            if (
+              importName !== 'React' &&
+              !code.includes(importName.split(' as ')[0])
+            ) {
               issues.push({
                 id: `unused-import-${lineNum}-${importName}`,
                 type: 'warning',
@@ -462,28 +505,52 @@ class ReactCodeAnalyzer {
     return issues;
   }
 
-  private calculateReactMetrics(code: string, issues: CodeIssue[]): CodeMetrics {
-    const complexityIndicators = code.match(/(if|for|while|switch|catch|\?\s*:)/g) || [];
-    const complexity = Math.min(10, Math.max(1, 10 - Math.floor(complexityIndicators.length / 2)));
+  private calculateReactMetrics(
+    code: string,
+    issues: CodeIssue[],
+  ): CodeMetrics {
+    const complexityIndicators =
+      code.match(/(if|for|while|switch|catch|\?\s*:)/g) || [];
+    const complexity = Math.min(
+      10,
+      Math.max(1, 10 - Math.floor(complexityIndicators.length / 2)),
+    );
 
-    const maintainability = Math.min(10, Math.max(1, 10 - Math.floor(issues.length / 3)));
+    const maintainability = Math.min(
+      10,
+      Math.max(1, 10 - Math.floor(issues.length / 3)),
+    );
 
     const hasExports = code.includes('export');
     const hasPureFunctions = code.includes('const ') && code.includes('=>');
     const testability = hasExports && hasPureFunctions ? 8 : 6;
 
-    const performanceIssues = issues.filter((issue) => issue.category === 'Performance').length;
+    const performanceIssues = issues.filter(
+      (issue) => issue.category === 'Performance',
+    ).length;
     const performance = Math.min(10, Math.max(1, 8 - performanceIssues));
 
     return { complexity, maintainability, testability, performance };
   }
 
-  private combineMetrics(syntaxMetrics: CodeMetrics, reactMetrics: CodeMetrics): CodeMetrics {
+  private combineMetrics(
+    syntaxMetrics: CodeMetrics,
+    reactMetrics: CodeMetrics,
+  ): CodeMetrics {
     return {
-      complexity: Math.round(syntaxMetrics.complexity * 0.3 + reactMetrics.complexity * 0.7),
-      maintainability: Math.round(syntaxMetrics.maintainability * 0.4 + reactMetrics.maintainability * 0.6),
-      testability: Math.round(syntaxMetrics.testability * 0.3 + reactMetrics.testability * 0.7),
-      performance: Math.round(syntaxMetrics.performance * 0.2 + reactMetrics.performance * 0.8),
+      complexity: Math.round(
+        syntaxMetrics.complexity * 0.3 + reactMetrics.complexity * 0.7,
+      ),
+      maintainability: Math.round(
+        syntaxMetrics.maintainability * 0.4 +
+          reactMetrics.maintainability * 0.6,
+      ),
+      testability: Math.round(
+        syntaxMetrics.testability * 0.3 + reactMetrics.testability * 0.7,
+      ),
+      performance: Math.round(
+        syntaxMetrics.performance * 0.2 + reactMetrics.performance * 0.8,
+      ),
     };
   }
 
@@ -502,7 +569,8 @@ const analyzer = new ReactCodeAnalyzer();
 // Main Component
 const CodeAnalyzer: React.FC = () => {
   // State
-  const [code, setCode] = useState(`import React, { useState, useEffect } from 'react';
+  const [code, setCode] =
+    useState(`import React, { useState, useEffect } from 'react';
 
 const UserProfile = ({ userId }) => {
   const [user, setUser] = useState(null);
@@ -554,17 +622,22 @@ export default UserProfile;`);
   }, []);
 
   // Utility functions
-  const showNotification = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    const id = Date.now().toString();
-    setNotifications((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-    }, 3000);
-  }, []);
+  const showNotification = useCallback(
+    (message: string, type: 'success' | 'error' = 'success') => {
+      const id = Date.now().toString();
+      setNotifications((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+      }, 3000);
+    },
+    [],
+  );
 
   const isValidFile = useCallback((file: File): boolean => {
     const validExtensions = ['.tsx', '.ts', '.jsx', '.js'];
-    const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    const extension = file.name
+      .toLowerCase()
+      .substring(file.name.lastIndexOf('.'));
     return validExtensions.includes(extension);
   }, []);
 
@@ -583,7 +656,10 @@ export default UserProfile;`);
       const validFiles = Array.from(files).filter(isValidFile);
 
       if (validFiles.length === 0) {
-        showNotification('Please upload valid React/TypeScript files (.tsx, .ts, .jsx, .js)', 'error');
+        showNotification(
+          'Please upload valid React/TypeScript files (.tsx, .ts, .jsx, .js)',
+          'error',
+        );
         return;
       }
 
@@ -605,14 +681,16 @@ export default UserProfile;`);
 
         setAnalyzedFiles((prev) => [...prev, ...newAnalyzedFiles]);
         setSelectedFileIndex(analyzedFiles.length);
-        showNotification(`Successfully analyzed ${newAnalyzedFiles.length} file(s)`);
+        showNotification(
+          `Successfully analyzed ${newAnalyzedFiles.length} file(s)`,
+        );
       } catch (error) {
         showNotification('Error processing files. Please try again.', 'error');
       } finally {
         setIsAnalyzing(false);
       }
     },
-    [analyzedFiles.length, isValidFile, readFileContent, showNotification]
+    [analyzedFiles.length, isValidFile, readFileContent, showNotification],
   );
 
   // Drag and drop handlers
@@ -635,7 +713,7 @@ export default UserProfile;`);
         handleFileUpload(e.dataTransfer.files);
       }
     },
-    [handleFileUpload]
+    [handleFileUpload],
   );
 
   // Analysis functions - Updated to use enhanced analyzer
@@ -671,7 +749,7 @@ export default UserProfile;`);
       }
       showNotification('File removed from analysis');
     },
-    [selectedFileIndex, analyzedFiles.length, showNotification]
+    [selectedFileIndex, analyzedFiles.length, showNotification],
   );
 
   // Export functions
@@ -683,7 +761,11 @@ export default UserProfile;`);
 
     const jsonContent = ExportManager.exportToJSON(analyzedFiles);
     const timestamp = new Date().toISOString().slice(0, 10);
-    ExportManager.downloadFile(jsonContent, `code-analysis-${timestamp}.json`, 'application/json');
+    ExportManager.downloadFile(
+      jsonContent,
+      `code-analysis-${timestamp}.json`,
+      'application/json',
+    );
     setShowExportMenu(false);
     showNotification('Analysis exported as JSON');
   }, [analyzedFiles, showNotification]);
@@ -696,7 +778,11 @@ export default UserProfile;`);
 
     const textReport = ExportManager.generateTextReport(analyzedFiles);
     const timestamp = new Date().toISOString().slice(0, 10);
-    ExportManager.downloadFile(textReport, `code-analysis-report-${timestamp}.txt`, 'text/plain');
+    ExportManager.downloadFile(
+      textReport,
+      `code-analysis-report-${timestamp}.txt`,
+      'text/plain',
+    );
     setShowExportMenu(false);
     showNotification('Report exported as text file');
   }, [analyzedFiles, showNotification]);
@@ -716,7 +802,7 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
     setShowExportMenu(false);
     showNotification(
       success ? 'Summary copied to clipboard' : 'Failed to copy to clipboard',
-      success ? 'success' : 'error'
+      success ? 'success' : 'error',
     );
   }, [analyzedFiles, showNotification]);
 
@@ -732,7 +818,10 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
       return;
     }
 
-    const newSession = SessionManager.createSession(sessionName.trim(), analyzedFiles);
+    const newSession = SessionManager.createSession(
+      sessionName.trim(),
+      analyzedFiles,
+    );
     const updatedSessions = [...savedSessions, newSession];
     setSavedSessions(updatedSessions);
     SessionManager.saveSessions(updatedSessions);
@@ -748,7 +837,7 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
       setShowLoadDialog(false);
       showNotification(`Session "${session.name}" loaded successfully`);
     },
-    [showNotification]
+    [showNotification],
   );
 
   const deleteSession = useCallback(
@@ -758,7 +847,7 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
       SessionManager.saveSessions(updatedSessions);
       showNotification('Session deleted');
     },
-    [savedSessions, showNotification]
+    [savedSessions, showNotification],
   );
 
   const importSession = useCallback(
@@ -780,38 +869,47 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
       };
       reader.readAsText(file);
     },
-    [showNotification]
+    [showNotification],
   );
 
   // Current analysis result
-  const currentResult = selectedFileIndex >= 0 ? analyzedFiles[selectedFileIndex]?.result : null;
-  const currentFileName = selectedFileIndex >= 0 ? analyzedFiles[selectedFileIndex]?.name : null;
+  const currentResult =
+    selectedFileIndex >= 0 ? analyzedFiles[selectedFileIndex]?.result : null;
+  const currentFileName =
+    selectedFileIndex >= 0 ? analyzedFiles[selectedFileIndex]?.name : null;
+  const [showComparisonView, setShowComparisonView] = useState(false);
 
   // Feature data
   const analysisFeatures = [
     {
       title: 'React Hooks',
-      description: 'Detects missing dependencies, incorrect hook usage, and optimization opportunities.',
+      description:
+        'Detects missing dependencies, incorrect hook usage, and optimization opportunities.',
     },
     {
       title: 'Type Safety',
-      description: 'Validates PropTypes, TypeScript interfaces, and type-related best practices.',
+      description:
+        'Validates PropTypes, TypeScript interfaces, and type-related best practices.',
     },
     {
       title: 'Accessibility',
-      description: 'Checks for WCAG compliance and suggests improvements for better accessibility.',
+      description:
+        'Checks for WCAG compliance and suggests improvements for better accessibility.',
     },
     {
       title: 'Performance',
-      description: 'Identifies performance bottlenecks and suggests React optimization patterns.',
+      description:
+        'Identifies performance bottlenecks and suggests React optimization patterns.',
     },
     {
       title: 'Code Quality',
-      description: 'Measures complexity, maintainability, and overall code health metrics.',
+      description:
+        'Measures complexity, maintainability, and overall code health metrics.',
     },
     {
       title: 'Best Practices',
-      description: 'Enforces React community standards and modern development patterns.',
+      description:
+        'Enforces React community standards and modern development patterns.',
     },
     {
       title: 'Syntax Checking',
@@ -820,23 +918,34 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
     },
     {
       title: 'Symbol & Operator Validation',
-      description: 'Validates correct usage of operators, symbols, and punctuation throughout your code.',
+      description:
+        'Validates correct usage of operators, symbols, and punctuation throughout your code.',
     },
   ];
 
   return (
-    <div className='min-h-screen bg-slate-50 p-5 font-sans'>
-      <div className='max-w-7xl mx-auto'>
+    <div className="min-h-screen p-5 font-sans bg-slate-50">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <div className='mb-10 text-center'>
-          <div className='flex items-center justify-center gap-3 mb-4'>
-            <Code className='w-10 h-10 text-blue-500' />
-            <h1 className='text-3xl font-bold text-slate-800'>React Code Quality Analyzer</h1>
+        <div className="mb-10 text-center">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Code className="w-10 h-10 text-blue-500" />
+            <h1 className="text-3xl font-bold text-slate-800">
+              React Code Quality Analyzer
+            </h1>
           </div>
-          <p className='text-slate-600 text-lg max-w-4xl mx-auto leading-relaxed'>
-            Analyze your React components for quality issues, performance problems, and best practice
-            violations. Upload files or paste code to get instant feedback and intelligent suggestions.
+          <p className="max-w-4xl mx-auto text-lg leading-relaxed text-slate-600">
+            Analyze your React components for quality issues, performance
+            problems, and best practice violations. Upload files or paste code
+            to get instant feedback and intelligent suggestions.
           </p>
+
+          {showComparisonView && (
+            <FileComparisonView
+              analyzedFiles={analyzedFiles}
+              onClose={() => setShowComparisonView(false)}
+            />
+          )}
 
           {/* Export Session Manager */}
           <ExportSessionManager
@@ -852,6 +961,7 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
             onToggleLoadDialog={() => setShowLoadDialog(!showLoadDialog)}
             onSessionNameChange={setSessionName}
             onSaveSession={saveSession}
+            onSetShowComparisonView={setShowComparisonView}
             onLoadSession={loadSession}
             onDeleteSession={deleteSession}
             onExportJSON={exportToJSON}
@@ -861,7 +971,7 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
           />
         </div>
 
-        <div className='grid lg:grid-cols-2 gap-8 items-start'>
+        <div className="grid items-start gap-8 lg:grid-cols-2">
           {/* Input Section */}
           <div>
             {/* File Upload Section */}
@@ -890,69 +1000,92 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
 
           {/* Results Section */}
           <div>
-            <AnalysisResultsSection currentResult={currentResult} currentFileName={currentFileName} />
+            <AnalysisResultsSection
+              currentResult={currentResult}
+              currentFileName={currentFileName}
+            />
           </div>
         </div>
 
         {/* Features Section */}
-        <div className='bg-white rounded-xl shadow-sm border border-slate-200 p-8 mt-12'>
-          <h2 className='text-2xl font-bold text-slate-800 mb-6 text-center'>What We Analyze</h2>
+        <div className="p-8 mt-12 bg-white border shadow-sm rounded-xl border-slate-200">
+          <h2 className="mb-6 text-2xl font-bold text-center text-slate-800">
+            What We Analyze
+          </h2>
 
-          <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-5'>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {analysisFeatures.map((feature, index) => (
               <div
                 key={index}
-                className='p-5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 hover:border-slate-300 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-pointer'
+                className="p-5 transition-all duration-200 bg-white border rounded-lg cursor-pointer border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:-translate-y-1 hover:shadow-lg"
               >
-                <h3 className='font-semibold text-slate-800 mb-2 text-base'>{feature.title}</h3>
-                <p className='text-sm text-slate-600 leading-relaxed'>{feature.description}</p>
+                <h3 className="mb-2 text-base font-semibold text-slate-800">
+                  {feature.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-slate-600">
+                  {feature.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Export Features Section */}
-        <div className='bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-slate-200 p-8 mt-8'>
-          <h2 className='text-2xl font-bold text-slate-800 mb-6 text-center'>Export & Share Features</h2>
+        <div className="p-8 mt-8 border bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-slate-200">
+          <h2 className="mb-6 text-2xl font-bold text-center text-slate-800">
+            Export & Share Features
+          </h2>
 
-          <div className='grid md:grid-cols-2 lg:grid-cols-4 gap-5'>
-            <div className='p-5 bg-white border border-slate-200 rounded-lg hover:shadow-lg transition-all duration-200'>
-              <div className='flex justify-center mb-3'>
-                <Download className='w-8 h-8 text-blue-500' />
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <div className="p-5 transition-all duration-200 bg-white border rounded-lg border-slate-200 hover:shadow-lg">
+              <div className="flex justify-center mb-3">
+                <Download className="w-8 h-8 text-blue-500" />
               </div>
-              <h3 className='font-semibold text-slate-800 mb-2 text-center'>JSON Export</h3>
-              <p className='text-sm text-slate-600 leading-relaxed text-center'>
-                Export complete analysis results in structured JSON format for integration with other tools.
+              <h3 className="mb-2 font-semibold text-center text-slate-800">
+                JSON Export
+              </h3>
+              <p className="text-sm leading-relaxed text-center text-slate-600">
+                Export complete analysis results in structured JSON format for
+                integration with other tools.
               </p>
             </div>
 
-            <div className='p-5 bg-white border border-slate-200 rounded-lg hover:shadow-lg transition-all duration-200'>
-              <div className='flex justify-center mb-3'>
-                <Printer className='w-8 h-8 text-green-500' />
+            <div className="p-5 transition-all duration-200 bg-white border rounded-lg border-slate-200 hover:shadow-lg">
+              <div className="flex justify-center mb-3">
+                <Printer className="w-8 h-8 text-green-500" />
               </div>
-              <h3 className='font-semibold text-slate-800 mb-2 text-center'>Report Generation</h3>
-              <p className='text-sm text-slate-600 leading-relaxed text-center'>
-                Generate professional text reports with executive summaries and detailed findings.
+              <h3 className="mb-2 font-semibold text-center text-slate-800">
+                Report Generation
+              </h3>
+              <p className="text-sm leading-relaxed text-center text-slate-600">
+                Generate professional text reports with executive summaries and
+                detailed findings.
               </p>
             </div>
 
-            <div className='p-5 bg-white border border-slate-200 rounded-lg hover:shadow-lg transition-all duration-200'>
-              <div className='flex justify-center mb-3'>
-                <Copy className='w-8 h-8 text-purple-500' />
+            <div className="p-5 transition-all duration-200 bg-white border rounded-lg border-slate-200 hover:shadow-lg">
+              <div className="flex justify-center mb-3">
+                <Copy className="w-8 h-8 text-purple-500" />
               </div>
-              <h3 className='font-semibold text-slate-800 mb-2 text-center'>Quick Copy</h3>
-              <p className='text-sm text-slate-600 leading-relaxed text-center'>
-                Copy analysis summaries to clipboard for quick sharing in messages or documents.
+              <h3 className="mb-2 font-semibold text-center text-slate-800">
+                Quick Copy
+              </h3>
+              <p className="text-sm leading-relaxed text-center text-slate-600">
+                Copy analysis summaries to clipboard for quick sharing in
+                messages or documents.
               </p>
             </div>
 
-            <div className='p-5 bg-white border border-slate-200 rounded-lg hover:shadow-lg transition-all duration-200'>
-              <div className='flex justify-center mb-3'>
-                <Save className='w-8 h-8 text-orange-500' />
+            <div className="p-5 transition-all duration-200 bg-white border rounded-lg border-slate-200 hover:shadow-lg">
+              <div className="flex justify-center mb-3">
+                <Save className="w-8 h-8 text-orange-500" />
               </div>
-              <h3 className='font-semibold text-slate-800 mb-2 text-center'>Session Management</h3>
-              <p className='text-sm text-slate-600 leading-relaxed text-center'>
-                Save and load analysis sessions to continue work later or share with team members.
+              <h3 className="mb-2 font-semibold text-center text-slate-800">
+                Session Management
+              </h3>
+              <p className="text-sm leading-relaxed text-center text-slate-600">
+                Save and load analysis sessions to continue work later or share
+                with team members.
               </p>
             </div>
           </div>
