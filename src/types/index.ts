@@ -31,13 +31,6 @@ export interface IssueSummary {
     total: number;
 }
 
-export interface AnalyzerConfig {
-    enabledRules: string[];
-    severity: {
-        [ruleName: string]: 'error' | 'warning' | 'info';
-    };
-}
-
 // Rule interface for extensibility
 export interface Rule {
     name: string;
@@ -77,3 +70,41 @@ export interface FilterStats {
     };
     byCategory: Map<string, number>;
 }
+
+// ─── Configuration Panel Types ───────────────────────────────────────────────
+
+/** Describes a single rule that the analyzer can check */
+export interface RuleDefinition {
+    id: string;
+    name: string;
+    category: RuleCategory;
+    description: string;
+    defaultSeverity: 'error' | 'warning' | 'info';
+    source: 'syntax' | 'react' | 'semantic';
+}
+
+/** Per-rule user configuration */
+export interface RuleConfig {
+    enabled: boolean;
+    severity: 'error' | 'warning' | 'info';
+}
+
+/** Full analyzer configuration – keyed by rule id */
+export interface AnalyzerConfig {
+    rules: Record<string, RuleConfig>;
+}
+
+/** All rule categories used across analyzers */
+export type RuleCategory =
+    | 'Syntax'
+    | 'JSX'
+    | 'Operators'
+    | 'Symbols'
+    | 'React Hooks'
+    | 'React'
+    | 'Type Safety'
+    | 'TypeScript'
+    | 'Accessibility'
+    | 'Performance'
+    | 'Code Quality'
+    | 'Best Practices';
