@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Code, Copy, Download, Printer, Save } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Code, Copy, Download, Printer, Save, Settings } from 'lucide-react';
 import FileUploadSection from './FileUploadSection';
 import CodeInputSection from './CodeInputSection';
 import AnalysisResultsSection from './AnalysisResultsSection';
 import ExportSessionManager from './ExportSessionManager';
+import ConfigurationPanel from './ConfigurationPanel';
 import { EnhancedSyntaxAnalyzer } from './EnhancedSyntaxAnalyzer';
 import FileComparisonView from './FileComparisonView';
 import {
@@ -13,7 +14,13 @@ import {
   IssueSummary,
   AnalyzedFile,
   AnalysisSession,
+  AnalyzerConfig,
 } from '../types';
+import {
+  createDefaultConfig,
+  isRuleEnabled,
+  getRuleSeverity,
+} from '../utils/ruleRegistry';
 
 // Types for the refactored component
 interface Notification {
@@ -82,9 +89,7 @@ class ExportManager {
         fileCount > 0
           ? {
               complexity: (avgMetrics.complexity / fileCount).toFixed(1),
-              maintainability: (avgMetrics.maintainability / fileCount).toFixed(
-                1,
-              ),
+              maintainability: (avgMetrics.maintainability / fileCount).toFixed(1),
               testability: (avgMetrics.testability / fileCount).toFixed(1),
               performance: (avgMetrics.performance / fileCount).toFixed(1),
             }
@@ -211,8 +216,6 @@ class SessionManager {
 
   static saveSessions(sessions: AnalysisSession[]): void {
     try {
-      // Note: In production, consider alternative storage methods
-      // localStorage.setItem(this.STORAGE_KEY, JSON.stringify(sessions));
       console.log('Sessions would be saved:', sessions);
     } catch (error) {
       console.warn('Failed to save sessions');
@@ -221,9 +224,6 @@ class SessionManager {
 
   static loadSessions(): AnalysisSession[] {
     try {
-      // Note: In production, consider alternative storage methods
-      // const stored = localStorage.getItem(this.STORAGE_KEY);
-      // return stored ? JSON.parse(stored) : [];
       return [];
     } catch (error) {
       console.warn('Failed to load sessions');
@@ -245,7 +245,8 @@ class SessionManager {
   }
 }
 
-// Enhanced Analyzer that combines syntax and React analysis
+// ─── Enhanced Analyzer (now config-aware) ────────────────────────────────────
+
 class ReactCodeAnalyzer {
   private syntaxAnalyzer: EnhancedSyntaxAnalyzer;
 
@@ -253,27 +254,40 @@ class ReactCodeAnalyzer {
     this.syntaxAnalyzer = new EnhancedSyntaxAnalyzer();
   }
 
-  public analyzeCode(code: string): AnalysisResult {
+  /**
+   * Analyze code, optionally respecting an AnalyzerConfig for rule
+   * enable/disable and severity overrides.
+   */
+  public analyzeCode(code: string, config?: AnalyzerConfig): AnalysisResult {
     const lines = code.split('\n');
-    const issues: CodeIssue[] = [];
+    let issues: CodeIssue[] = [];
 
-    // First, run comprehensive syntax analysis
-    const syntaxAnalysis = this.syntaxAnalyzer.analyzeSyntax(code);
+    // Syntax analysis (config is passed through)
+    const syntaxAnalysis = this.syntaxAnalyzer.analyzeSyntax(code, config);
     issues.push(...syntaxAnalysis.issues);
 
-    // Then run React-specific analysis
+    // React-specific analysis
     issues.push(...this.checkBasicReactRules(code, lines));
     issues.push(...this.checkTypeScriptRules(code, lines));
     issues.push(...this.checkAccessibilityRules(code, lines));
     issues.push(...this.checkPerformanceRules(code, lines));
     issues.push(...this.checkCodeQualityRules(code, lines));
 
-    // Combine metrics from syntax analysis and React analysis
+    // Apply config to React-level issues (syntax issues were already filtered)
+    if (config) {
+      issues = issues.filter((issue) => {
+        // Syntax issues are already filtered by the syntax analyzer, skip them
+        if (syntaxAnalysis.issues.includes(issue)) return true;
+        return isRuleEnabled(config, issue.rule);
+      });
+      issues = issues.map((issue) => {
+        if (syntaxAnalysis.issues.includes(issue)) return issue;
+        return { ...issue, type: getRuleSeverity(config, issue.rule) };
+      });
+    }
+
     const reactMetrics = this.calculateReactMetrics(code, issues);
-    const combinedMetrics = this.combineMetrics(
-      syntaxAnalysis.metrics,
-      reactMetrics,
-    );
+    const combinedMetrics = this.combineMetrics(syntaxAnalysis.metrics, reactMetrics);
     const summary = this.generateSummary(issues);
 
     return { issues, metrics: combinedMetrics, summary };
@@ -318,8 +332,7 @@ class ReactCodeAnalyzer {
             line: lineNum,
             column: 0,
             rule: 'react-hooks/exhaustive-deps',
-            suggestion:
-              'Review and add missing dependencies to dependency array',
+            suggestion: 'Review and add missing dependencies to dependency array',
           });
         }
       }
@@ -434,8 +447,7 @@ class ReactCodeAnalyzer {
             line.includes('style={{') ? 'style={{' : 'onClick={() =>',
           ),
           rule: 'react/jsx-no-bind',
-          suggestion:
-            'Move object/function creation outside render or use useCallback/useMemo',
+          suggestion: 'Move object/function creation outside render or use useCallback/useMemo',
         });
       }
 
@@ -448,8 +460,7 @@ class ReactCodeAnalyzer {
           line: lineNum,
           column: line.indexOf("' + "),
           rule: 'prefer-template',
-          suggestion:
-            'Use template literals with backticks instead of string concatenation',
+          suggestion: 'Use template literals with backticks instead of string concatenation',
         });
       }
     });
@@ -505,26 +516,20 @@ class ReactCodeAnalyzer {
     return issues;
   }
 
-  private calculateReactMetrics(
-    code: string,
-    issues: CodeIssue[],
-  ): CodeMetrics {
+  private calculateReactMetrics(code: string, issues: CodeIssue[]): CodeMetrics {
     const complexityIndicators =
       code.match(/(if|for|while|switch|catch|\?\s*:)/g) || [];
     const complexity = Math.min(
       10,
       Math.max(1, 10 - Math.floor(complexityIndicators.length / 2)),
     );
-
     const maintainability = Math.min(
       10,
       Math.max(1, 10 - Math.floor(issues.length / 3)),
     );
-
     const hasExports = code.includes('export');
     const hasPureFunctions = code.includes('const ') && code.includes('=>');
     const testability = hasExports && hasPureFunctions ? 8 : 6;
-
     const performanceIssues = issues.filter(
       (issue) => issue.category === 'Performance',
     ).length;
@@ -533,17 +538,13 @@ class ReactCodeAnalyzer {
     return { complexity, maintainability, testability, performance };
   }
 
-  private combineMetrics(
-    syntaxMetrics: CodeMetrics,
-    reactMetrics: CodeMetrics,
-  ): CodeMetrics {
+  private combineMetrics(syntaxMetrics: CodeMetrics, reactMetrics: CodeMetrics): CodeMetrics {
     return {
       complexity: Math.round(
         syntaxMetrics.complexity * 0.3 + reactMetrics.complexity * 0.7,
       ),
       maintainability: Math.round(
-        syntaxMetrics.maintainability * 0.4 +
-          reactMetrics.maintainability * 0.6,
+        syntaxMetrics.maintainability * 0.4 + reactMetrics.maintainability * 0.6,
       ),
       testability: Math.round(
         syntaxMetrics.testability * 0.3 + reactMetrics.testability * 0.7,
@@ -558,7 +559,6 @@ class ReactCodeAnalyzer {
     const errors = issues.filter((issue) => issue.type === 'error').length;
     const warnings = issues.filter((issue) => issue.type === 'warning').length;
     const info = issues.filter((issue) => issue.type === 'info').length;
-
     return { errors, warnings, info, total: issues.length };
   }
 }
@@ -566,9 +566,10 @@ class ReactCodeAnalyzer {
 // Initialize analyzer instance
 const analyzer = new ReactCodeAnalyzer();
 
-// Main Component
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 const CodeAnalyzer: React.FC = () => {
-  // State
+  // ── State ──
   const [code, setCode] =
     useState(`import React, { useState, useEffect } from 'react';
 
@@ -616,10 +617,38 @@ export default UserProfile;`);
   const [savedSessions, setSavedSessions] = useState<AnalysisSession[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  // ─── NEW: Configuration state ──────────────────────────────────────────────
+  const [analyzerConfig, setAnalyzerConfig] = useState<AnalyzerConfig>(
+    createDefaultConfig()
+  );
+  const [showConfigPanel, setShowConfigPanel] = useState(false);
+
+  // Ref to track whether this is the initial mount (skip auto re-analyze on mount)
+  const isInitialMount = useRef(true);
+
   // Load sessions on component mount
   useEffect(() => {
     setSavedSessions(SessionManager.loadSessions());
   }, []);
+
+  // ─── NEW: Auto re-analyze when config changes ─────────────────────────────
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Re-analyze all files with the updated config
+    if (analyzedFiles.length > 0) {
+      const reanalyzed = analyzedFiles.map((file) => ({
+        ...file,
+        result: analyzer.analyzeCode(file.content, analyzerConfig),
+      }));
+      setAnalyzedFiles(reanalyzed);
+      showNotification('Re-analyzed files with updated configuration');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analyzerConfig]);
 
   // Utility functions
   const showNotification = useCallback(
@@ -650,7 +679,7 @@ export default UserProfile;`);
     });
   }, []);
 
-  // File upload handlers
+  // File upload handlers — now uses analyzerConfig
   const handleFileUpload = useCallback(
     async (files: FileList) => {
       const validFiles = Array.from(files).filter(isValidFile);
@@ -670,13 +699,9 @@ export default UserProfile;`);
 
         for (const file of validFiles) {
           const content = await readFileContent(file);
-          const result = analyzer.analyzeCode(content);
+          const result = analyzer.analyzeCode(content, analyzerConfig);
 
-          newAnalyzedFiles.push({
-            name: file.name,
-            content,
-            result,
-          });
+          newAnalyzedFiles.push({ name: file.name, content, result });
         }
 
         setAnalyzedFiles((prev) => [...prev, ...newAnalyzedFiles]);
@@ -690,7 +715,7 @@ export default UserProfile;`);
         setIsAnalyzing(false);
       }
     },
-    [analyzedFiles.length, isValidFile, readFileContent, showNotification],
+    [analyzedFiles.length, isValidFile, readFileContent, showNotification, analyzerConfig],
   );
 
   // Drag and drop handlers
@@ -708,7 +733,6 @@ export default UserProfile;`);
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
-
       if (e.dataTransfer.files) {
         handleFileUpload(e.dataTransfer.files);
       }
@@ -716,12 +740,12 @@ export default UserProfile;`);
     [handleFileUpload],
   );
 
-  // Analysis functions - Updated to use enhanced analyzer
+  // Analysis — now uses analyzerConfig
   const analyzeCode = useCallback(async () => {
     setIsAnalyzing(true);
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const result = analyzer.analyzeCode(code);
+    const result = analyzer.analyzeCode(code, analyzerConfig);
 
     const manualFile: AnalyzedFile = {
       name: 'Manual Input',
@@ -737,7 +761,7 @@ export default UserProfile;`);
     setSelectedFileIndex(0);
     setIsAnalyzing(false);
     showNotification('Code analysis completed');
-  }, [code, showNotification]);
+  }, [code, showNotification, analyzerConfig]);
 
   const removeFile = useCallback(
     (index: number) => {
@@ -758,7 +782,6 @@ export default UserProfile;`);
       showNotification('No analysis results to export', 'error');
       return;
     }
-
     const jsonContent = ExportManager.exportToJSON(analyzedFiles);
     const timestamp = new Date().toISOString().slice(0, 10);
     ExportManager.downloadFile(
@@ -775,7 +798,6 @@ export default UserProfile;`);
       showNotification('No analysis results to export', 'error');
       return;
     }
-
     const textReport = ExportManager.generateTextReport(analyzedFiles);
     const timestamp = new Date().toISOString().slice(0, 10);
     ExportManager.downloadFile(
@@ -792,7 +814,6 @@ export default UserProfile;`);
       showNotification('No analysis results to copy', 'error');
       return;
     }
-
     const summary = ExportManager.generateGlobalSummary(analyzedFiles);
     const summaryText = `React Code Analysis Summary
 Files: ${summary.totalFiles} | Issues: ${summary.totalIssues} (${summary.totalErrors} errors, ${summary.totalWarnings} warnings, ${summary.totalInfo} info)
@@ -812,16 +833,11 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
       showNotification('No analysis results to save', 'error');
       return;
     }
-
     if (!sessionName.trim()) {
       showNotification('Please enter a session name', 'error');
       return;
     }
-
-    const newSession = SessionManager.createSession(
-      sessionName.trim(),
-      analyzedFiles,
-    );
+    const newSession = SessionManager.createSession(sessionName.trim(), analyzedFiles);
     const updatedSessions = [...savedSessions, newSession];
     setSavedSessions(updatedSessions);
     SessionManager.saveSessions(updatedSessions);
@@ -883,43 +899,35 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
   const analysisFeatures = [
     {
       title: 'React Hooks',
-      description:
-        'Detects missing dependencies, incorrect hook usage, and optimization opportunities.',
+      description: 'Detects missing dependencies, incorrect hook usage, and optimization opportunities.',
     },
     {
       title: 'Type Safety',
-      description:
-        'Validates PropTypes, TypeScript interfaces, and type-related best practices.',
+      description: 'Validates PropTypes, TypeScript interfaces, and type-related best practices.',
     },
     {
       title: 'Accessibility',
-      description:
-        'Checks for WCAG compliance and suggests improvements for better accessibility.',
+      description: 'Checks for WCAG compliance and suggests improvements for better accessibility.',
     },
     {
       title: 'Performance',
-      description:
-        'Identifies performance bottlenecks and suggests React optimization patterns.',
+      description: 'Identifies performance bottlenecks and suggests React optimization patterns.',
     },
     {
       title: 'Code Quality',
-      description:
-        'Measures complexity, maintainability, and overall code health metrics.',
+      description: 'Measures complexity, maintainability, and overall code health metrics.',
     },
     {
       title: 'Best Practices',
-      description:
-        'Enforces React community standards and modern development patterns.',
+      description: 'Enforces React community standards and modern development patterns.',
     },
     {
       title: 'Syntax Checking',
-      description:
-        'Comprehensive syntax validation including bracket matching, function structure, and JSX syntax.',
+      description: 'Comprehensive syntax validation including bracket matching, function structure, and JSX syntax.',
     },
     {
       title: 'Symbol & Operator Validation',
-      description:
-        'Validates correct usage of operators, symbols, and punctuation throughout your code.',
+      description: 'Validates correct usage of operators, symbols, and punctuation throughout your code.',
     },
   ];
 
@@ -946,6 +954,19 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
               onClose={() => setShowComparisonView(false)}
             />
           )}
+
+          {/* ─── NEW: Settings button row ──────────────────────────────── */}
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => setShowConfigPanel(true)}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-slate-700
+                bg-white border border-slate-200 rounded-lg shadow-sm
+                hover:bg-slate-50 hover:border-slate-300 transition-all"
+            >
+              <Settings className="w-4 h-4" />
+              Configure Rules
+            </button>
+          </div>
 
           {/* Export Session Manager */}
           <ExportSessionManager
@@ -974,7 +995,6 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
         <div className="grid items-start gap-8 lg:grid-cols-2">
           {/* Input Section */}
           <div>
-            {/* File Upload Section */}
             <FileUploadSection
               analyzedFiles={analyzedFiles}
               selectedFileIndex={selectedFileIndex}
@@ -989,7 +1009,6 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
               setIsDragOver={setIsDragOver}
             />
 
-            {/* Code Input Section */}
             <CodeInputSection
               code={code}
               isAnalyzing={isAnalyzing}
@@ -1091,6 +1110,15 @@ Average Quality: Complexity ${summary.averageMetrics?.complexity}/10, Maintainab
           </div>
         </div>
       </div>
+
+      {/* ─── NEW: Configuration Panel Modal ──────────────────────────────── */}
+      {showConfigPanel && (
+        <ConfigurationPanel
+          config={analyzerConfig}
+          onConfigChange={setAnalyzerConfig}
+          onClose={() => setShowConfigPanel(false)}
+        />
+      )}
     </div>
   );
 };
